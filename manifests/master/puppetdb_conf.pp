@@ -24,16 +24,9 @@ class puppetdb::master::puppetdb_conf (
     require => File["${puppet_confdir}/puppetdb.conf"],
   }
 
-  ini_setting { 'puppetdbserver':
-    setting => 'server',
-    value   => $server,
-    require => File["${puppet_confdir}/puppetdb.conf"],
-  }
-
-  ini_setting { 'puppetdbport':
-    setting => 'port',
-    value   => $port,
-    require => File["${puppet_confdir}/puppetdb.conf"],
+  ini_setting { 'puppetdbserver_urls':
+    setting => 'server_urls',
+    value   => "https://#{server}:#{port}/",
   }
 
   ini_setting { 'soft_write_failure':
