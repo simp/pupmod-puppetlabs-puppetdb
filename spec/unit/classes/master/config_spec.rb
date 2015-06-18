@@ -43,7 +43,7 @@ describe 'puppetdb::master::config', :type => :class do
         :puppetdb_port => '8080',
         :use_ssl => 'false')
       }
-      
+
     end
 
     context 'when puppetdb_port => 1234' do

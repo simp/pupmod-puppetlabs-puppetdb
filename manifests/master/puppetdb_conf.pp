@@ -10,24 +10,35 @@ class puppetdb::master::puppetdb_conf (
   $puppet_confdir     = $puppetdb::params::puppet_confdir,
 ) inherits puppetdb::params {
 
+  file { "${puppet_confdir}/puppetdb.conf":
+    ensure => present,
+    owner  => 'root',
+    group  => 'puppet',
+    mode   => '0640',
+  }
+
   Ini_setting {
     ensure  => present,
     section => 'main',
     path    => "${puppet_confdir}/puppetdb.conf",
+    require => File["${puppet_confdir}/puppetdb.conf"],
   }
 
   ini_setting { 'puppetdbserver':
     setting => 'server',
     value   => $server,
+    require => File["${puppet_confdir}/puppetdb.conf"],
   }
 
   ini_setting { 'puppetdbport':
     setting => 'port',
     value   => $port,
+    require => File["${puppet_confdir}/puppetdb.conf"],
   }
 
   ini_setting { 'soft_write_failure':
     setting => 'soft_write_failure',
     value   => $soft_write_failure,
+    require => File["${puppet_confdir}/puppetdb.conf"],
   }
 }
