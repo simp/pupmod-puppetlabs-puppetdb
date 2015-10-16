@@ -1,34 +1,38 @@
 # PRIVATE CLASS - do not use directly
 #
 # The puppetdb default configuration settings.
-class puppetdb::params {
+class puppetdb::params inherits puppetdb::globals {
   $listen_address            = 'localhost'
   $listen_port               = '8080'
   $open_listen_port          = false
-  $ssl_listen_address        = $::fqdn
+  $ssl_listen_address        = '0.0.0.0'
   $ssl_listen_port           = '8081'
   $ssl_protocols             = undef
   $disable_ssl               = false
   $open_ssl_listen_port      = undef
   $postgres_listen_addresses = 'localhost'
 
-  $database                  = 'postgres'
+  $puppetdb_version          = $puppetdb::globals::version
+  $database                  = $puppetdb::globals::database
   $manage_dbserver           = true
+  $manage_pg_repo            = true
+  # This should NOT default to a specific version, let the logic
+  # in postgres globals.pp determine it.
+  $postgres_version          = undef
 
   # The remaining database settings are not used for an embedded database
-  $database_host          = 'localhost'
-  $database_port          = '5432'
-  $database_name          = 'puppetdb'
-  $database_username      = 'puppetdb'
-  $database_password      = 'puppetdb'
-  $database_ssl           = false
+  $database_host      = 'localhost'
+  $database_port      = '5432'
+  $database_name      = 'puppetdb'
+  $database_username  = 'puppetdb'
+  $database_password  = 'puppetdb'
+  $database_ssl       = false
+  $database_validate  = true
 
   # These settings manage the various auto-deactivation and auto-purge settings
   $node_ttl               = '0s'
   $node_purge_ttl         = '0s'
   $report_ttl             = '14d'
-
-  $puppetdb_version       = 'present'
 
   $gc_interval            = '60'
 
@@ -47,6 +51,7 @@ class puppetdb::params {
   $read_database_username   = 'puppetdb'
   $read_database_password   = 'puppetdb'
   $read_database_ssl        = false
+  $read_database_validate   = true
   $read_log_slow_statements = '10'
   $read_conn_max_age        = '60'
   $read_conn_keep_alive     = '45'
@@ -54,82 +59,84 @@ class puppetdb::params {
 
   $manage_firewall = true
   $java_args       = {}
-  $test_url        = '/v3/version'
 
-  case $::osfamily {
-    'RedHat': {
-      $firewall_supported       = true
-      $persist_firewall_command = '/sbin/iptables-save > /etc/sysconfig/iptables'
-    }
+  $puppetdb_package     = 'puppetdb'
+  $puppetdb_service     = 'puppetdb'
+  $puppetdb_user        = 'puppetdb'
+  $puppetdb_group       = 'puppetdb'
+  $masterless           = false
 
-    'Debian': {
-      $firewall_supported       = false
-      # TODO: not exactly sure yet what the right thing to do for Debian/Ubuntu is.
-      #$persist_firewall_command = '/sbin/iptables-save > /etc/iptables/rules.v4'
-    }
-    default: {
-      $firewall_supported       = false
-    }
-  }
-
-  if defined('$is_pe') and str2bool($::is_pe) == true {
-    $puppetdb_package     = 'pe-puppetdb'
-    $puppetdb_service     = 'pe-puppetdb'
-    $puppetdb_user        = 'pe-puppetdb'
-    $puppetdb_group       = 'pe-puppetdb'
-    $confdir              = '/etc/puppetlabs/puppetdb/conf.d'
-    $puppet_service_name  = 'pe-httpd'
-    $puppet_confdir       = '/etc/puppetlabs/puppet'
-    $terminus_package     = 'pe-puppetdb-terminus'
-    $embedded_subname     = 'file:/opt/puppet/share/puppetdb/db/db;hsqldb.tx=mvcc;sql.syntax_pgs=true'
-    $ssl_dir              = '/etc/puppetlabs/puppetdb/ssl'
-
+  if !($puppetdb_version in ['latest','present','absent']) and versioncmp($puppetdb_version, '3.0.0') < 0 {
     case $::osfamily {
-      'RedHat', 'Suse': {
-        $puppetdb_initconf = '/etc/sysconfig/pe-puppetdb'
-      }
-      'Debian': {
-        $puppetdb_initconf = '/etc/default/pe-puppetdb'
-      }
-      default: {
-        fail("${module_name} supports osfamily's RedHat and Debian. Your osfamily is recognized as ${::osfamily}")
-      }
-    }
-  } else {
-    $puppetdb_package     = 'puppetdb'
-    $puppetdb_service     = 'puppetdb'
-    $puppetdb_user        = 'puppetdb'
-    $puppetdb_group       = 'puppetdb'
-    $confdir              = '/etc/puppetdb/conf.d'
-    $puppet_confdir       = '/etc/puppet'
-    $terminus_package     = 'puppetdb-terminus'
-    $ssl_dir              = '/etc/puppetdb/ssl'
-
-    case $::osfamily {
-      'RedHat', 'Suse', 'Archlinux': {
-        $puppetdb_initconf    = '/etc/sysconfig/puppetdb'
-        $puppet_service_name  = 'puppetserver'
-        $embedded_subname     = 'file:/var/lib/puppetdb/db/db;hsqldb.tx=mvcc;sql.syntax_pgs=true'
-      }
-      'Debian': {
-        $puppetdb_initconf    = '/etc/default/puppetdb'
-        $puppet_service_name  = 'puppetmaster'
-        $embedded_subname     = 'file:/var/lib/puppetdb/db/db;hsqldb.tx=mvcc;sql.syntax_pgs=true'
+      'RedHat', 'Suse', 'Archlinux','Debian': {
+        $confdir                = '/etc/puppetdb/conf.d'
+        $database_embedded_path = '/var/lib/puppetdb/db/db'
+        $puppet_confdir         = pick($settings::confdir,'/etc/puppet')
+        $puppet_service_name    = 'puppetmaster'
+        $ssl_dir                = '/etc/puppetdb/ssl'
       }
       'OpenBSD': {
-        $puppetdb_initconf    = undef
-        $puppet_service_name  = 'puppetmasterd'
-        $embedded_subname     = 'file:/var/db/puppetdb/db/db;hsqldb.tx=mvcc;sql.syntax_pgs=true'
+        $confdir                = '/etc/puppetdb/conf.d'
+        $database_embedded_path = '/var/db/puppetdb/db/db'
+        $puppet_confdir         = pick($settings::confdir,'/etc/puppet')
+        $puppet_service_name    = 'puppetmasterd'
+        $ssl_dir                = '/etc/puppetdb/ssl'
       }
-      default: {
-        fail("${module_name} supports osfamily's RedHat and Debian. Your osfamily is recognized as ${::osfamily}")
+      'FreeBSD': {
+        $confdir                = '/usr/local/etc/puppetdb/conf.d'
+        $database_embedded_path = '/var/db/puppetdb/db/db'
+        $puppet_confdir         = pick($settings::confdir,'/usr/local/etc/puppet')
+        $puppet_service_name    = 'puppetmaster'
+        $ssl_dir                = '/usr/local/etc/puppetdb/ssl'
       }
+    }
+    $terminus_package = 'puppetdb-terminus'
+    $test_url         = '/v3/version'
+  } else {
+    case $::osfamily {
+      'RedHat', 'Suse', 'Archlinux','Debian': {
+        $confdir                = '/etc/puppetlabs/puppetdb/conf.d'
+        $puppet_confdir         = pick($settings::confdir,'/etc/puppetlabs/puppet')
+        $puppet_service_name    = 'puppetserver'
+        $ssl_dir                = '/etc/puppetlabs/puppetdb/ssl'
+      }
+      'OpenBSD': {
+        $confdir                = '/etc/puppetlabs/puppetdb/conf.d'
+        $puppet_confdir         = pick($settings::confdir,'/etc/puppetlabs/puppet')
+        $puppet_service_name    = undef
+        $ssl_dir                = '/etc/puppetlabs/puppetdb/ssl'
+      }
+      'FreeBSD': {
+        $confdir                = '/usr/local/etc/puppetlabs/puppetdb/conf.d'
+        $puppet_confdir         = pick($settings::confdir,'/usr/local/etc/puppetlabs/puppet')
+        $puppet_service_name    = undef
+        $ssl_dir                = '/usr/local/etc/puppetlabs/puppetdb/ssl'
+      }
+    }
+    $terminus_package       = 'puppetdb-termini'
+    $test_url               = '/pdb/meta/v1/version'
+    $database_embedded_path = '/opt/puppetlabs/server/data/puppetdb/db/db'
+  }
+
+  case $::osfamily {
+    'RedHat', 'Suse', 'Archlinux': {
+      $puppetdb_initconf      = '/etc/sysconfig/puppetdb'
+    }
+    'Debian': {
+      $puppetdb_initconf      = '/etc/default/puppetdb'
+    }
+    'OpenBSD','FreeBSD': {
+      $puppetdb_initconf      = undef
     }
   }
 
   $puppet_conf              = "${puppet_confdir}/puppet.conf"
   $puppetdb_startup_timeout = 120
   $puppetdb_service_status  = 'running'
+
+  $command_threads          = undef
+  $store_usage              = undef
+  $temp_usage               = undef
 
   $ssl_set_cert_paths        = false
   $ssl_cert_path             = "${ssl_dir}/public.pem"
@@ -139,4 +146,5 @@ class puppetdb::params {
   $ssl_key                   = undef
   $ssl_cert                  = undef
   $ssl_ca_cert               = undef
+
 }
