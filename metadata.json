@@ -1,11 +1,11 @@
 {
-    "name": "puppetlabs/puppetdb",
-    "version": "4.1.0",
-    "summary": "PuppetDB resource types",
+    "name": "puppetlabs-puppetdb",
+    "version": "5.0.0",
+    "summary": "Installs PostgreSQL and PuppetDB, sets up the connection to Puppet master.",
     "source": "git://github.com/puppetlabs/puppetlabs-puppetdb.git",
     "project_page": "http://github.com/puppetlabs/puppetlabs-puppetdb",
     "author": "puppetlabs",
-    "license": "Apache 2.0",
+    "license": "Apache-2.0",
     "issues_url": "https://tickets.puppetlabs.com/browse/PDB",
     "description": "Module for installing/configuring PuppetDB",
     "operatingsystem_support": [
@@ -67,7 +67,7 @@
     "requirements": [
     {
       "name": "puppet",
-      "version_requirement": ">=3.7.1 <4.0.0"
+      "version_requirement": ">=3.7.1 <5.0.0"
     }
     ],
 

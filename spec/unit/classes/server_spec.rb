@@ -6,7 +6,8 @@ describe 'puppetdb::server', :type => :class do
         :osfamily                 => 'RedHat',
         :operatingsystem          => 'RedHat',
         :operatingsystemrelease   => '6.5',
-        :fqdn                     => 'test.domain.local'
+        :fqdn                     => 'test.domain.local',
+        :kernel                   => 'Linux',
       }
 
   context 'on a supported platform' do
@@ -34,24 +35,6 @@ describe 'puppetdb::server', :type => :class do
         with(
           'ensure'            => 'present',
           'path'              => '/etc/sysconfig/puppetdb',
-          'section'           => '',
-          'key_val_separator' => '=',
-          'setting'           => 'JAVA_ARGS',
-          'subsetting'        => '-Xms',
-          'value'             => '2g'
-        )}
-      end
-
-      context 'on PE PuppetDB' do
-        let(:facts) do
-          basefacts.merge({
-            :is_pe => 'true',
-          })
-        end
-        it { should contain_ini_subsetting("'-Xms'").
-        with(
-          'ensure'            => 'present',
-          'path'              => '/etc/sysconfig/pe-puppetdb',
           'section'           => '',
           'key_val_separator' => '=',
           'setting'           => 'JAVA_ARGS',
