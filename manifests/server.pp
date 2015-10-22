@@ -16,6 +16,7 @@ class puppetdb::server (
   $ssl_key                  = $puppetdb::params::ssl_key,
   $ssl_cert                 = $puppetdb::params::ssl_cert,
   $ssl_ca_cert              = $puppetdb::params::ssl_ca_cert,
+  $ssl_protocols            = $puppetdb::params::ssl_protocols,
   $database                 = $puppetdb::params::database,
   $database_host            = $puppetdb::params::database_host,
   $database_port            = $puppetdb::params::database_port,
@@ -23,6 +24,8 @@ class puppetdb::server (
   $database_password        = $puppetdb::params::database_password,
   $database_name            = $puppetdb::params::database_name,
   $database_ssl             = $puppetdb::params::database_ssl,
+  $database_validate        = $puppetdb::params::database_validate,
+  $database_embedded_path   = $puppetdb::params::database_embedded_path,
   $node_ttl                 = $puppetdb::params::node_ttl,
   $node_purge_ttl           = $puppetdb::params::node_purge_ttl,
   $report_ttl               = $puppetdb::params::report_ttl,
@@ -32,7 +35,6 @@ class puppetdb::server (
   $conn_keep_alive          = $puppetdb::params::conn_keep_alive,
   $conn_lifetime            = $puppetdb::params::conn_lifetime,
   $puppetdb_package         = $puppetdb::params::puppetdb_package,
-  $puppetdb_version         = $puppetdb::params::puppetdb_version,
   $puppetdb_service         = $puppetdb::params::puppetdb_service,
   $puppetdb_service_status  = $puppetdb::params::puppetdb_service_status,
   $puppetdb_user            = $puppetdb::params::puppetdb_user,
@@ -44,6 +46,7 @@ class puppetdb::server (
   $read_database_password   = $puppetdb::params::read_database_password,
   $read_database_name       = $puppetdb::params::read_database_name,
   $read_database_ssl        = $puppetdb::params::read_database_ssl,
+  $read_database_validate   = $puppetdb::params::read_database_validate,
   $read_log_slow_statements = $puppetdb::params::read_log_slow_statements,
   $read_conn_max_age        = $puppetdb::params::read_conn_max_age,
   $read_conn_keep_alive     = $puppetdb::params::read_conn_keep_alive,
@@ -52,6 +55,9 @@ class puppetdb::server (
   $manage_firewall          = $puppetdb::params::manage_firewall,
   $java_args                = $puppetdb::params::java_args,
   $max_threads              = $puppetdb::params::max_threads,
+  $command_threads          = $puppetdb::params::command_threads,
+  $store_usage              = $puppetdb::params::store_usage,
+  $temp_usage               = $puppetdb::params::temp_usage,
 ) inherits puppetdb::params {
 
   # Apply necessary suffix if zero is specified.
@@ -85,11 +91,13 @@ class puppetdb::server (
   validate_re ($report_ttl_real, ['^\d+(d|h|m|s|ms)$'], "report_ttl is <${report_ttl}> which does not match the regex validation")
 
   # Validate puppetdb_service_status
-  if !($puppetdb_service_status in ['true', 'running', 'false', 'stopped']) {
-    fail("puppetdb_service_status valid values are 'true', 'running', 'false', and 'stopped'. You provided '${puppetdb_service_status}'")
+  $service_enabled = $puppetdb_service_status ? {
+    /(running|true)/  => true,
+    /(stopped|false)/ => false,
+    default           => fail("puppetdb_service_status valid values are 'true', 'running', 'false', and 'stopped'. You provided '${puppetdb_service_status}'"),
   }
 
-  # Validate read-database type (Currently only postgres is supported)
+  # Validate database type (Currently only postgres and embedded are supported)
   if !($database in ['postgres', 'embedded']) {
     fail("database must must be 'postgres' or 'embedded'. You provided '${database}'")
   }
@@ -100,7 +108,7 @@ class puppetdb::server (
   }
 
   package { $puppetdb_package:
-    ensure => $puppetdb_version,
+    ensure => $puppetdb::params::puppetdb_version,
     notify => Service[$puppetdb_service],
   }
 
@@ -113,24 +121,34 @@ class puppetdb::server (
     }
   }
 
+  class { 'puppetdb::server::config_ini':
+    command_threads => $command_threads,
+    store_usage     => $store_usage,
+    temp_usage      => $temp_usage,
+    confdir         => $confdir,
+    notify          => Service[$puppetdb_service],
+  }
+
   class { 'puppetdb::server::database_ini':
-    database            => $database,
-    database_host       => $database_host,
-    database_port       => $database_port,
-    database_username   => $database_username,
-    database_password   => $database_password,
-    database_name       => $database_name,
-    database_ssl        => $database_ssl,
-    node_ttl            => $node_ttl,
-    node_purge_ttl      => $node_purge_ttl,
-    report_ttl          => $report_ttl,
-    gc_interval         => $gc_interval,
-    log_slow_statements => $log_slow_statements,
-    conn_max_age        => $conn_max_age,
-    conn_keep_alive     => $conn_keep_alive,
-    conn_lifetime       => $conn_lifetime,
-    confdir             => $confdir,
-    notify              => Service[$puppetdb_service],
+    database               => $database,
+    database_host          => $database_host,
+    database_port          => $database_port,
+    database_username      => $database_username,
+    database_password      => $database_password,
+    database_name          => $database_name,
+    database_ssl           => $database_ssl,
+    database_validate      => $database_validate,
+    database_embedded_path => $database_embedded_path,
+    node_ttl               => $node_ttl,
+    node_purge_ttl         => $node_purge_ttl,
+    report_ttl             => $report_ttl,
+    gc_interval            => $gc_interval,
+    log_slow_statements    => $log_slow_statements,
+    conn_max_age           => $conn_max_age,
+    conn_keep_alive        => $conn_keep_alive,
+    conn_lifetime          => $conn_lifetime,
+    confdir                => $confdir,
+    notify                 => Service[$puppetdb_service],
   }
 
   class { 'puppetdb::server::read_database_ini':
@@ -141,6 +159,7 @@ class puppetdb::server (
     database_password   => $read_database_password,
     database_name       => $read_database_name,
     database_ssl        => $read_database_ssl,
+    database_validate   => $read_database_validate,
     log_slow_statements => $read_log_slow_statements,
     conn_max_age        => $read_conn_max_age,
     conn_keep_alive     => $read_conn_keep_alive,
@@ -168,19 +187,22 @@ class puppetdb::server (
         content => $ssl_key,
         owner   => $puppetdb_user,
         group   => $puppetdb_group,
-        mode    => '0600';
+        mode    => '0600',
+        notify  => Service[$puppetdb_service];
       $ssl_cert_path:
         ensure  => file,
         content => $ssl_cert,
         owner   => $puppetdb_user,
         group   => $puppetdb_group,
-        mode    => '0600';
+        mode    => '0600',
+        notify  => Service[$puppetdb_service];
       $ssl_ca_cert_path:
         ensure  => file,
         content => $ssl_ca_cert,
         owner   => $puppetdb_user,
         group   => $puppetdb_group,
-        mode    => '0600';
+        mode    => '0600',
+        notify  => Service[$puppetdb_service];
     }
   }
 
@@ -193,6 +215,7 @@ class puppetdb::server (
     ssl_key_path       => $ssl_key_path,
     ssl_cert_path      => $ssl_cert_path,
     ssl_ca_cert_path   => $ssl_ca_cert_path,
+    ssl_protocols      => $ssl_protocols,
     disable_ssl        => $disable_ssl,
     confdir            => $confdir,
     max_threads        => $max_threads,
@@ -215,12 +238,6 @@ class puppetdb::server (
     )
   }
 
-  $service_enabled = $puppetdb_service_status ? {
-    /(running|true)/  => true,
-    /(stopped|false)/ => false,
-    default           => true,
-  }
-
   service { $puppetdb_service:
     ensure => $puppetdb_service_status,
     enable => $service_enabled,
@@ -229,12 +246,16 @@ class puppetdb::server (
   if $manage_firewall {
     Package[$puppetdb_package] ->
     Class['puppetdb::server::firewall'] ->
+    Class['puppetdb::server::config_ini'] ->
     Class['puppetdb::server::database_ini'] ->
+    Class['puppetdb::server::read_database_ini'] ->
     Class['puppetdb::server::jetty_ini'] ->
     Service[$puppetdb_service]
   } else {
     Package[$puppetdb_package] ->
+    Class['puppetdb::server::config_ini'] ->
     Class['puppetdb::server::database_ini'] ->
+    Class['puppetdb::server::read_database_ini'] ->
     Class['puppetdb::server::jetty_ini'] ->
     Service[$puppetdb_service]
   }

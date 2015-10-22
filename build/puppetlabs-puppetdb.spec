@@ -1,7 +1,7 @@
 Summary: PuppetLabs PuppetDB Module
 Name: puppetlabs-puppetdb
-Version: 4.1.0
-Release: 1
+Version: 5.0.0
+Release: 0
 License: Apache License, 2.0
 Group: Applications/System
 Source: %{name}-%{version}-%{release}.tar.gz
@@ -48,6 +48,11 @@ mkdir -p %{buildroot}/%{prefix}/puppetdb
 # Post uninstall stuff
 
 %changelog
+* Thu Oct 22 2015 Trevor Vaughan <tvaughan@onyxpoint.com> - 5.0.0-0
+- Incorporated the upstream 5.0.0 release
+- Set the $postgres_version to 'undef' in params.pp to allow the inbuilt
+  defaults to function properly.
+
 * Tue May 05 2015 Nick Markowski <nmarkowski@keywcorp.com> - 4.1.0-1
 - Ensured '/etc/puppet/puppetdb.conf' present; was not present in the
   catalog otherwise.

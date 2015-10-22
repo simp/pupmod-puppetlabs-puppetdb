@@ -10,7 +10,7 @@ module Puppet
       attr_reader :test_path
       attr_reader :test_headers
 
-      def initialize(puppetdb_server, puppetdb_port, use_ssl=true, test_path = "/v3/version")
+      def initialize(puppetdb_server, puppetdb_port, use_ssl=true, test_path = "/pdb/meta/v1/version")
         @puppetdb_server = puppetdb_server
         @puppetdb_port   = puppetdb_port
         @use_ssl         = use_ssl
@@ -31,12 +31,12 @@ module Puppet
 
         response = conn.get(test_path, test_headers)
         unless response.kind_of?(Net::HTTPSuccess)
-          Puppet.notice "Unable to connect to puppetdb server (#{puppetdb_server}:#{puppetdb_port}): [#{response.code}] #{response.msg}"
+          Puppet.notice "Unable to connect to puppetdb server (http#{use_ssl ? "s" : ""}://#{puppetdb_server}:#{puppetdb_port}): [#{response.code}] #{response.msg}"
           return false
         end
         return true
       rescue Exception => e
-        Puppet.notice "Unable to connect to puppetdb server (#{puppetdb_server}:#{puppetdb_port}): #{e.message}"
+        Puppet.notice "Unable to connect to puppetdb server (http#{use_ssl ? "s" : ""}://#{puppetdb_server}:#{puppetdb_port}): #{e.message}"
         return false
       end
     end

@@ -139,6 +139,35 @@ You can also manually trigger puppet runs on the nodes in the correct order (Pos
 Upgrading
 ---------
 
+###Upgrading from 4.x to version 5.x
+
+Significant parameter changes are listed below:
+
+* The PuppetDB module now supports PuppetDB 3.0.0 by default
+* The PuppetDB module now manages Postgres repos by default. To turn this behavior off, set `manage_package_repo` to false.
+* If you want to use 5.x of the module with PuppetDB 2.x, you'll need to use the new `puppetdb::globals` class to set the version of PuppetDB you're using explicitly. The ability to configure the version has been therefore moved out of the `puppetdb` and `puppetdb::server` classes.
+For example if your config looked like this before:
+~~~ruby
+class {'puppetdb':
+  puppetdb_version => '2.3.5-1.el7',
+}
+class { 'puppetdb::master::config': }
+~~~
+and you'd still like to use the module with PuppetDB 2.3.5, all you'd have to change would be:
+~~~ruby
+class { 'puppetdb::globals':
+  version => '2.3.5-1.el7',
+}
+class { 'puppetdb' : }
+class { 'puppetdb::master::config' : }
+~~~
+The `globals` class above takes into account the following PuppetDB 3 and Puppet 4 related changes:
+* The `puppetdb::master:puppetdb_conf` class has added a `$legacy_terminus` to support the PuppetDB 2.x terminus configuration.
+* The default `test_url` for the `PuppetDBConnValidator` has also been chaged to `/pdb/meta/v1/version` but will default to `/v3/version` when using a PuppetDB 2.x version.
+* The configuration pathing for Puppet and PuppetDB has changed with Puppet 4 and PuppetDB 3, using PuppetDB 2.x or older assumes the old configuration pathing.
+
+See the CHANGELOG file for more detailed information on changes for each release.
+
 ###Upgrading from 3.x to version 4.x
 
 For this release, all dependency versions have been bumped to their latest. Significant parameter changes are listed below:
@@ -179,6 +208,19 @@ Usage
 
 PuppetDB supports a large number of configuration options for both configuring the puppetdb service and connecting that service to the puppet master.
 
+### puppetdb::globals
+The `puppetdb::globals` class is intended to provide similar functionality to the `postgresql::globals` class in the `puppetlabs-postgresql` module by exposing a top-level entry-point into the module so that we can properly set defaults for the `puppetdb::params` class based on the version of `puppetdb` you are using. This setting defaults to `present`. 
+
+You must declare the class to use it:
+
+    class { 'puppetdb::globals': }
+
+**Parameters within `puppetdb::globals`:**
+
+####`version`
+
+The version of the `puppetdb` package that should be installed.  You may specify an explicit version number, 'present', or 'latest' (defaults to 'present').
+
 ### puppetdb
 The `puppetdb` class is intended as a high-level abstraction (sort of an 'all-in-one' class) to help simplify the process of getting your puppetdb server up and running. It wraps the slightly-lower-level classes `puppetdb::server` and `puppetdb::database::*`, and it'll get you up and running with everything you need (including database setup and management) on the server side.  For maximum configurability, you may choose not to use this class.  You may prefer to use the `puppetdb::server` class directly, or manage your puppetdb setup on your own.
 
@@ -202,7 +244,7 @@ If true, open the http_listen\_port on the firewall (defaults to false).
 
 ####`ssl_listen_address`
 
-The address that the web server should bind to for HTTPS requests (defaults to `$::clientcert`). Set to '0.0.0.0' to listen on all addresses.
+The address that the web server should bind to for HTTPS requests (defaults to '0.0.0.0' to listen on all addresses).
 
 ####`ssl_listen_port`
 
@@ -215,6 +257,10 @@ If true, the puppetdb web server will only serve HTTP and not HTTPS requests (de
 ####`open_ssl_listen_port`
 
 If true, open the ssl_listen\_port on the firewall (defaults to true).
+
+####`ssl_protocols`
+
+specify the supported SSL protocols for PuppetDB (e.g. TLSv1, TLSv1.1, TLSv1.2.)
 
 ###`manage_dbserver`
 
@@ -248,6 +294,14 @@ The name of the database instance to connect to (defaults to `puppetdb`; ignored
 
 If true, puppetdb will use SSL to connect to the postgres database (defaults to false; ignored for `embedded` db).
 Setting up proper trust- and keystores has to be managed outside of the puppetdb module.
+
+####`database_validate`
+
+If true, the module will attempt to connect to the database using the specified settings and fail if it is not able to do so. (defaults to true)
+
+####`database_embedded_path`
+
+*Embedded Database Only* Changes the path location for the HSQLDB database. Does not provide migration for old data, so if you change this value and you have an existing database you will need to manually move the content also. (defaults to package default for 2.x release).
 
 ####`node_ttl`
 
@@ -292,10 +346,6 @@ If not supplied, we won't terminate connections based on their age alone. This o
 ####`puppetdb_package`
 
 The puppetdb package name in the package manager.
-
-####`puppetdb_version`
-
-The version of the `puppetdb` package that should be installed.  You may specify an explicit version number, 'present', or 'latest' (defaults to 'present').
 
 ####`puppetdb_service`
 
@@ -410,6 +460,22 @@ Contents of your SSL certificate, as a string.
 
 Contents of your SSL CA certificate, as a string.
 
+####`manage_firewall`
+
+if true, puppet will manage your iptables rules for puppetdb via the [puppetlabs-firewall](https://forge.puppetlabs.com/puppetlabs/firewall) class.
+
+####`command_threads`
+
+The number of command processing threads to use. Defaults to undef, using the PuppetDB built-in default.
+
+####`store_usage`
+
+The amount of disk space (in MB) to allow for persistent message storage. Defaults to undef, using the PuppetDB built-in default.
+
+####`temp_usage`
+
+The amount of disk space (in MB) to allow for temporary message storage. Defaults to undef, using the PuppetDB built-in default.
+
 
 ### puppetdb::server
 
@@ -480,9 +546,9 @@ Puppet's config directory (defaults to `/etc/puppet`).
 
 Puppet's config file (defaults to `/etc/puppet/puppet.conf`).
 
-####`puppetdb_version`
+####`masterless`
 
-The version of the `puppetdb` package that should be installed. You may specify an explicit version number, 'present', or 'latest' (defaults to 'present').
+A boolean switch to enable or disable the masterless setup of PuppetDB.
 
 ####`terminus_package`
 
@@ -529,7 +595,15 @@ Conditionally manages the PostgresQL server via `postgresql::server`. Defaults t
 
 ####`test_url`
 
-The URL to use for testing if the PuppetDB instance is running. Defaults to `/v3/version`.
+The URL to use for testing if the PuppetDB instance is running. Defaults to `/pdb/meta/v1/version`.
+
+####`manage_package_repo`
+
+If this is true, the official postgres.org repo will be added and postgres won't be installed from the regular repository. This setting defaults to `true`.
+
+####`postgres_version`
+
+If the postgres.org repo is installed, you can install several versions of postgres. This currently defaults to 9.4 which is the latest stable version.
 
 Implementation
 ---------------
