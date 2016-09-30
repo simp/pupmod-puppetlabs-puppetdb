@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-describe 'puppetdb::server::jetty_ini', :type => :class do
+describe 'puppetdb::server::jetty', :type => :class do
   context 'on a supported platform' do
     let(:facts) do
       {
@@ -9,7 +9,7 @@ describe 'puppetdb::server::jetty_ini', :type => :class do
       }
     end
 
-    it { should contain_class('puppetdb::server::jetty_ini') }
+    it { should contain_class('puppetdb::server::jetty') }
 
     describe 'when using default values' do
       it { should contain_ini_setting('puppetdb_host').
@@ -158,10 +158,34 @@ describe 'puppetdb::server::jetty_ini', :type => :class do
 
         it 'should fail' do
           expect {
-            should contain_class('puppetdb::server::jetty_ini')
+            should contain_class('puppetdb::server::jetty')
           }.to raise_error(Puppet::Error)
         end
       end
+    end
+
+    describe 'when disabling the cleartext HTTP port' do
+      let(:params) do
+        {
+          'disable_cleartext' => true
+        }
+      end
+      it { should contain_ini_setting('puppetdb_host').
+        with(
+             'ensure'  => 'absent',
+             'path'    => '/etc/puppetlabs/puppetdb/conf.d/jetty.ini',
+             'section' => 'jetty',
+             'setting' => 'host',
+             'value'   => 'localhost'
+             )}
+      it { should contain_ini_setting('puppetdb_port').
+        with(
+             'ensure'  => 'absent',
+             'path'    => '/etc/puppetlabs/puppetdb/conf.d/jetty.ini',
+             'section' => 'jetty',
+             'setting' => 'port',
+             'value'   => 8080
+             )}
     end
   end
 end

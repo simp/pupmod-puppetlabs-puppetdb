@@ -14,18 +14,10 @@ class puppetdb::master::puppetdb_conf (
   },
   ) inherits puppetdb::params {
 
-  file { "${puppet_confdir}/puppetdb.conf":
-    ensure => present,
-    owner  => 'root',
-    group  => 'puppet',
-    mode   => '0640',
-  }
-
   Ini_setting {
     ensure  => present,
     section => 'main',
     path    => "${puppet_confdir}/puppetdb.conf",
-    require => File["${puppet_confdir}/puppetdb.conf"],
   }
 
   if $legacy_terminus {
@@ -47,6 +39,5 @@ class puppetdb::master::puppetdb_conf (
   ini_setting { 'soft_write_failure':
     setting => 'soft_write_failure',
     value   => $soft_write_failure,
-    require => File["${puppet_confdir}/puppetdb.conf"],
   }
 }
