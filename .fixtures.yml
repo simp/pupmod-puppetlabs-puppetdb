@@ -1,11 +1,14 @@
+---
 fixtures:
   repositories:
-    inifile: 'git://github.com/puppetlabs/puppetlabs-inifile.git'
-    stdlib: 'git://github.com/puppetlabs/puppetlabs-stdlib.git'
-    postgresql: 'git://github.com/puppetlabs/puppet-postgresql.git'
-    firewall: 'git://github.com/puppetlabs/puppetlabs-firewall.git'
-    apt: 'git://github.com/puppetlabs/puppetlabs-apt.git'
-    concat: 'git://github.com/simp/pupmod-simp-concat.git'
-    file_concat: 'git://github.com/electrical/puppet-lib-file_concat.git'
+    inifile: git://github.com/puppetlabs/puppetlabs-inifile.git
+    stdlib: git://github.com/puppetlabs/puppetlabs-stdlib.git
+    postgresql: git://github.com/puppetlabs/puppet-postgresql.git
+    firewall: git://github.com/puppetlabs/puppetlabs-firewall.git
+    apt: git://github.com/puppetlabs/puppetlabs-apt.git
+    concat:
+      repo: git://github.com/simp/pupmod-simp-concat.git
+      branch: 5.X
+    file_concat: git://github.com/electrical/puppet-lib-file_concat.git
   symlinks:
-    puppetdb: '#{source_dir}'
+    puppetdb: "#{source_dir}"
