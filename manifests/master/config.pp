@@ -180,5 +180,4 @@ class puppetdb::master::config (
       Class['puppetdb::master::routes'] ~> Service[$puppet_service_name]
     }
   }
-
 }
